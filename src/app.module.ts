@@ -2,6 +2,8 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RoleModule } from './role/role.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       synchronize: true, // Geliştirme aşamasında Entity'leri otomatik senkronize eder (Prod. ortamında false olmalı!)
       autoLoadEntities: true, // Entity dosyalarını otomatik yükle
     }),
+    RoleModule,
+    UserModule,
   ],
   controllers: [],
   providers: [],
