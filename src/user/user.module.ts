@@ -10,5 +10,8 @@ import { User } from './entities/user.entity'; // 👈 Entity'yi import edin
   imports: [TypeOrmModule.forFeature([User])], // 👈 Bu satır CRİTİK
   controllers: [UserController],
   providers: [UserService],
+  // 👇 İŞTE EKSİK OLAN KISIM BURASIYDI 👇
+  // UserService'i dışarıya açıyoruz ki AuthModule onu kullanabilsin.
+  exports: [UserService],
 })
 export class UserModule {}
