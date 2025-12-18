@@ -82,4 +82,14 @@ export class UserService {
   ): Promise<boolean> {
     return bcrypt.compare(passwordPlain, passwordHash);
   }
+  // src/user/user.service.ts içindeki ilgili metot
+
+  async findOneById(id: number): Promise<User | null> {
+    // 👈 undefined yerine null yaptık
+    return this.usersRepository.findOne({
+      // 👈 usersRepository (s takısıyla) yaptık
+      where: { id },
+      relations: ['role'],
+    });
+  }
 }
