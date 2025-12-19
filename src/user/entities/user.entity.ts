@@ -1,13 +1,13 @@
-// src/user/entities/user.entity.ts
-
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany, // 👈 1. Bunu buraya virgül koyarak ekle
   JoinColumn,
 } from 'typeorm';
 import { Role } from '../../role/entities/role.entity';
+import { Book } from '../../book/entities/book.entity'; // 👈 2. Book Entity'i import et
 
 @Entity()
 export class User {
@@ -17,7 +17,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ unique: true }) // Kullanıcı adı benzersiz ve zorunlu
+  @Column({ unique: true })
   username: string;
 
   @Column()
@@ -26,12 +26,16 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
-  // --- Rol İlişkisi (Detaylı Versiyon) ---
-  // TypeORM'in kullanacağı ilişki nesnesi
+  // --- ROL İLİŞKİSİ (Senin yazdığın kısım) ---
   @ManyToOne(() => Role, { eager: true })
-  @JoinColumn({ name: 'roleId' }) // Foreign Key'i 'roleId' alanına bağla
+  @JoinColumn({ name: 'roleId' })
   role: Role;
 
   @Column()
-  roleId: number; // 👈 Foreign Key Sütunu (Veritabanındaki sayısal bağlantı)
+  roleId: number;
+
+  // --- KİTAP İLİŞKİSİ (Yeni eklediğimiz kısım) ---
+  // Bir kullanıcının eklediği BİRÇOK kitap olabilir.
+  @OneToMany(() => Book, (book) => book.addedBy)
+  books: Book[];
 }
