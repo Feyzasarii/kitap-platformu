@@ -7,9 +7,11 @@ import {
   JoinTable,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Category } from '../../category/entities/category.entity';
+import { Comment } from '../../comment/entities/comment.entity'; // 👈 Import et
 
 @Entity()
 export class Book {
@@ -51,4 +53,7 @@ export class Book {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => Comment, (comment) => comment.book)
+  comments: Comment[];
 }

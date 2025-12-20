@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Role } from '../../role/entities/role.entity';
 import { Book } from '../../book/entities/book.entity'; // 👈 2. Book Entity'i import et
-
+import { Comment } from '../../comment/entities/comment.entity'; // 👈 Import et
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -38,4 +38,7 @@ export class User {
   // Bir kullanıcının eklediği BİRÇOK kitap olabilir.
   @OneToMany(() => Book, (book) => book.addedBy)
   books: Book[];
+
+  @OneToMany(() => Comment, (comment) => comment.user)
+  comments: Comment[];
 }
