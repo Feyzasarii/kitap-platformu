@@ -9,6 +9,8 @@ import {
 import { Role } from '../../role/entities/role.entity';
 import { Book } from '../../book/entities/book.entity'; // 👈 2. Book Entity'i import et
 import { Comment } from '../../comment/entities/comment.entity'; // 👈 Import et
+import { Exclude } from 'class-transformer'; // 👈 1. Bunu import et
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -21,6 +23,7 @@ export class User {
   username: string;
 
   @Column()
+  @Exclude() // 👈 2. Bunu şifre alanının tepesine yapıştır
   passwordHash: string;
 
   @Column({ default: true })
