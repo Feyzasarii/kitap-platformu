@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"; // useEffect'i ekledik
 import api from "../api/axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useNavigate } from "react-router-dom"; // useNavigate importu
+import { Link, useNavigate } from "react-router-dom"; // useNavigate importu
 
 const LoginPage = () => {
   // 🟢 DÜZELTME BURADA: Hook'lar fonksiyonun EN BAŞINDA ve İÇİNDE olmalı
@@ -105,9 +105,9 @@ const LoginPage = () => {
 
           <p className="text-center text-gray-400 mt-4 text-sm">
             Hesabın yok mu?{" "}
-            <a href="#" className="text-blue-400 hover:underline">
+            <Link to="/register" className="text-blue-400 hover:underline">
               Kayıt Ol
-            </a>
+            </Link>
           </p>
         </div>
       </div>
