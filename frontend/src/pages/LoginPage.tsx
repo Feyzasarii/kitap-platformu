@@ -1,41 +1,52 @@
-import { useState } from "react";
-import api from "../api/axios"; // 👈 Az önce oluşturduğumuz ayar dosyası
-import { toast, ToastContainer } from "react-toastify"; // Bildirimler için
-import "react-toastify/dist/ReactToastify.css"; // CSS dosyası
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react"; // useEffect'i ekledik
+import api from "../api/axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom"; // useNavigate importu
 
 const LoginPage = () => {
+  // 🟢 DÜZELTME BURADA: Hook'lar fonksiyonun EN BAŞINDA ve İÇİNDE olmalı
+  const navigate = useNavigate();
+
+  // Eğer zaten giriş yapmışsa, Login ekranını hiç gösterme, Ana Sayfaya at
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      navigate("/", { replace: true });
+    }
+  }, []);
+
+  // State tanımları
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      // 1. Backend'e istek at
-      const response = await api.post("/auth/login", {
-        identifier: identifier,
-        password: password,
-      });
+      const response = await api.post("/auth/login", { identifier, password });
 
-      // 2. Başarılıysa Token'ı al
-      console.log("Gelen Cevap:", response.data);
-      localStorage.setItem("token", response.data.access_token); // Token'ı tarayıcıya kaydet
+      // 👇 HATA BURADAYDI. DÜZELTİLMİŞ HALİ:
+      // Backend veriyi 'user' objesi içinde gönderdiği için biz de oradan almalıyız.
+      const role = response.data.user.role;
 
-      // 3. Kullanıcıya haber ver
-      toast.success("Giriş Başarılı! Hoşgeldin şampiyon. 🚀");
-      // ... önceki kodlar
-      toast.success("Giriş Başarılı! Hoşgeldin şampiyon. 🚀");
+      // Kontrol için konsola yazdıralım (Büyük/Küçük harf farkı olabilir: 'Admin' mi 'admin' mi?)
+      console.log("Gelen Rol:", role);
 
-      // 👇 YÖNLENDİRME KODU
+      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("role", role);
+
+      toast.success("Giriş Başarılı! 🚀");
+
       setTimeout(() => {
-        navigate("/");
-      }, 1000); // 1 saniye bekleyip yönlendirsin (bildirim görünsün diye)
-
-      // (İleride burada yönlendirme yapacağız)
+        // 👇 BURAYA DİKKAT: Backend'den "Admin" (büyük harfle) geliyor olabilir.
+        // Garanti olsun diye hepsini küçük harfe çevirip kontrol edelim.
+        if (role.toLowerCase() === "admin") {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/", { replace: true });
+        }
+      }, 1000);
     } catch (error: any) {
-      // 4. Hata varsa göster
       console.error("Giriş Hatası:", error);
       toast.error("Giriş Başarısız! Kullanıcı adı veya şifre yanlış.");
     }
@@ -43,7 +54,6 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-      {/* Bildirim Baloncuğu Kutusu */}
       <ToastContainer position="top-right" autoClose={3000} theme="dark" />
 
       <nav className="w-full p-6 border-b border-gray-800">
@@ -66,7 +76,7 @@ const LoginPage = () => {
               <input
                 type="text"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                placeholder="Örn: ahmet123"
+                placeholder="Örn: nese_sari"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
@@ -79,7 +89,7 @@ const LoginPage = () => {
               <input
                 type="password"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                placeholder="••••••••"
+                placeholder="******"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

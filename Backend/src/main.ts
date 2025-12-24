@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common'; // 👈 Bunu ekle
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // 👇 BU SATIRI EKLE (Frontend ile konuşabilmek için şart)
+  app.enableCors();
 
   // 👈 Bu satırı ekle: Gelen verileri DTO'lardaki kurallara göre denetler.
   app.useGlobalPipes(new ValidationPipe());

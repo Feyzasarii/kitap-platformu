@@ -29,6 +29,14 @@ const HomePage = () => {
   const [hoverRating, setHoverRating] = useState(0); // Yıldızların üzerine gelince renk değişsin
 
   useEffect(() => {
+    // 1. Önce rol kontrolü yap
+    const role = localStorage.getItem("role");
+
+    // 🛑 EĞER ADMİN İSE, BURADA DURAMAZ!
+    if (role === "admin" || role === "Admin") {
+      navigate("/admin", { replace: true }); // Admin paneline postala
+      return; // Aşağıdaki kodları çalıştırma
+    }
     fetchBooks();
   }, []);
 
@@ -43,7 +51,10 @@ const HomePage = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    localStorage.removeItem("role");
+
+    // Sayfayı tamamen yenileyerek Login'e git (React hafızası sıfırlanır)
+    window.location.href = "/login";
   };
 
   // Hızlı Yorum Gönderme Fonksiyonu
