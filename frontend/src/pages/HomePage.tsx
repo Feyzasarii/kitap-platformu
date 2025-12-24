@@ -22,6 +22,9 @@ const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
+  // 👇 YENİ: Çıkış Modalı Görünürlüğü (Bunu geri ekledik)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
   // Hızlı Yorum State'leri
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [rating, setRating] = useState(0); // 0 ile 5 arası
@@ -67,18 +70,17 @@ const HomePage = () => {
 
     try {
       // Backend'e yorumu ve puanı gönderiyoruz
-      // NOT: Backend'inde 'rating' alanı yoksa şimdilik sadece yorum gider.
       await api.post("/comment", {
         content: reviewText,
         bookId: Number(selectedBookId),
-        // rating: rating (Bunu backend'e ekleyince açarız)
+        // rating: rating (Backend'e bu alan eklenince açılmalı)
       });
 
-      toast.success(
-        `Harika! "${
-          books.find((b) => b.id === Number(selectedBookId))?.title
-        }" için yorumun alındı. 🎉`
-      );
+      const bookTitle = books.find(
+        (b) => b.id === Number(selectedBookId)
+      )?.title;
+
+      toast.success(`Harika! "${bookTitle}" için yorumun alındı. 🎉`);
       setReviewText("");
       setRating(0);
       setSelectedBookId("");
@@ -114,8 +116,9 @@ const HomePage = () => {
           </button>
         </nav>
 
+        {/* 👇 ÇIKIŞ BUTONU GÜNCELLENDİ: Modalı Açıyor */}
         <button
-          onClick={handleLogout}
+          onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center gap-2 text-red-400 hover:text-red-300 transition mt-auto font-bold"
         >
           <FaSignOutAlt /> Çıkış Yap
@@ -235,11 +238,44 @@ const HomePage = () => {
           </form>
         </div>
 
-        {/* Alt kısma belki son eklenen yorumlar veya öneriler gelebilir */}
+        {/* Alt kısım */}
         <p className="text-center text-gray-500 text-sm mt-10">
           Daha fazla kitap keşfetmek için yukarıdaki arama çubuğunu kullan! 👆
         </p>
       </main>
+
+      {/* 👇 YENİ: ÇIKIŞ ONAY MODALI (Buraya Geri Eklendi) */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+              <FaSignOutAlt />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-2">
+              Çıkış Yapılıyor
+            </h3>
+            <p className="text-gray-400 mb-6">
+              Hesabınızdan çıkış yapmak istediğinize emin misiniz?
+            </p>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-lg hover:shadow-red-500/30"
+              >
+                Evet, Çık
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

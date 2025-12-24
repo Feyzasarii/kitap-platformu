@@ -24,11 +24,17 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
-  // Düzenleme için seçilen kitap (Boşsa ekleme modundayız demektir)
+  // Düzenleme için seçilen kitap
   const [editingBook, setEditingBook] = useState<Book | null>(null);
 
-  // Modal State
+  // Modal State'leri
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  // 👇 YENİ: SİLME ONAYI İÇİN STATE'LER
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState<number | null>(null);
+
   const [newBook, setNewBook] = useState({
     title: "",
     author: "",
@@ -57,56 +63,61 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteBook = async (id: number) => {
-    if (!confirm("Bu kitabı kalıcı olarak silmek istediğine emin misin?"))
-      return;
+  // 👇 1. ADIM: SİLME BUTONUNA BASINCA MODALI AÇAR
+  const handleDeleteClick = (id: number) => {
+    setBookToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  // 👇 2. ADIM: MODALDA "EVET" DENİLİNCE SİLER
+  const confirmDelete = async () => {
+    if (!bookToDelete) return;
+
     try {
-      await api.delete(`/book/${id}`);
-      toast.success("Kitap silindi.");
+      await api.delete(`/book/${bookToDelete}`);
+      toast.success("Kitap başarıyla silindi. 🗑️");
       fetchBooks();
     } catch (error) {
-      toast.error("Silme başarısız.");
+      toast.error("Silme işlemi başarısız.");
+    } finally {
+      setIsDeleteModalOpen(false); // Modalı kapat
+      setBookToDelete(null); // Hafızayı temizle
     }
   };
 
-  // 👇 YENİ: DÜZENLEME MODUNU AÇAR
+  // DÜZENLEME MODUNU AÇAR
   const handleEditClick = (book: Book) => {
-    setEditingBook(book); // Düzenlenecek kitabı hafızaya al
+    setEditingBook(book);
     setNewBook({
-      // Formu o kitabın bilgileriyle doldur
       title: book.title,
       author: book.author,
       description: book.description,
     });
-    setIsModalOpen(true); // Modalı aç
-  };
-
-  // 👇 YENİ: EKLEME MODUNU AÇAR (Temiz sayfa)
-  const handleOpenAddModal = () => {
-    setEditingBook(null); // Düzenleme modunu kapat
-    setNewBook({ title: "", author: "", description: "" }); // Formu temizle
     setIsModalOpen(true);
   };
 
-  // 👇 GÜNCELLENDİ: HEM EKLEME HEM GÜNCELLEME YAPAR
+  // EKLEME MODUNU AÇAR
+  const handleOpenAddModal = () => {
+    setEditingBook(null);
+    setNewBook({ title: "", author: "", description: "" });
+    setIsModalOpen(true);
+  };
+
+  // KAYDET / GÜNCELLE
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingBook) {
-        // --- GÜNCELLEME İŞLEMİ (PUT) ---
         await api.put(`/book/${editingBook.id}`, newBook);
         toast.success("Kitap güncellendi! ✍️");
       } else {
-        // --- EKLEME İŞLEMİ (POST) ---
         await api.post("/book", newBook);
         toast.success("Yeni kitap eklendi! 🎉");
       }
-
-      // Temizlik ve Kapatma
       setIsModalOpen(false);
       setEditingBook(null);
       setNewBook({ title: "", author: "", description: "" });
-      fetchBooks(); // Listeyi yenile
+      fetchBooks();
     } catch (error) {
       toast.error("İşlem başarısız.");
     }
@@ -118,7 +129,6 @@ const AdminDashboard = () => {
     window.location.href = "/login";
   };
 
-  // 🔍 FİLTRELEME MANTIĞI
   const filteredBooks = books.filter(
     (book) =>
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -141,8 +151,8 @@ const AdminDashboard = () => {
           </div>
         </nav>
         <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-red-400 hover:text-white mt-auto"
+          onClick={() => setIsLogoutModalOpen(true)}
+          className="flex items-center gap-2 text-red-400 hover:text-white mt-auto transition"
         >
           <FaSignOutAlt /> Çıkış
         </button>
@@ -166,7 +176,7 @@ const AdminDashboard = () => {
           </div>
 
           <button
-            onClick={handleOpenAddModal} // 👈 BURASI GÜNCELLENDİ
+            onClick={handleOpenAddModal}
             className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition shadow-lg whitespace-nowrap"
           >
             <FaPlus /> Yeni Kitap
@@ -187,23 +197,24 @@ const AdminDashboard = () => {
             <tbody className="divide-y divide-gray-700">
               {filteredBooks.map((book) => (
                 <tr key={book.id} className="hover:bg-gray-700/50 transition">
-                  <td className="p-4 text-gray-400">#{book.id}</td>
-                  <td className="p-4 font-bold">{book.title}</td>
-                  <td className="p-4 text-gray-300">{book.author}</td>
-                  <td className="p-4 text-center flex justify-center gap-2">
-                    {" "}
-                    {/* Flex eklendi */}
-                    {/* 👇 YENİ: DÜZENLE BUTONU */}
+                  <td className="px-4 py-3 text-gray-400">#{book.id}</td>
+                  <td className="px-4 py-3 font-bold text-lg">{book.title}</td>
+                  <td className="px-4 py-3 text-gray-300">{book.author}</td>
+                  <td className="px-4 py-3 text-center flex justify-center gap-4">
+                    {/* DÜZENLE BUTONU */}
                     <button
                       onClick={() => handleEditClick(book)}
-                      className="bg-yellow-500/20 text-yellow-400 p-2 rounded hover:bg-yellow-500 hover:text-black transition"
+                      title="Düzenle"
+                      className="bg-yellow-500/20 text-yellow-400 px-3 py-2 rounded-lg text-lg hover:bg-yellow-500 hover:text-black transition transform hover:scale-110 shadow-lg"
                     >
                       <FaEdit />
                     </button>
-                    {/* SİL BUTONU */}
+
+                    {/* SİL BUTONU (GÜNCELLENDİ) */}
                     <button
-                      onClick={() => handleDeleteBook(book.id)}
-                      className="bg-red-500/20 text-red-400 p-2 rounded hover:bg-red-600 hover:text-white transition"
+                      onClick={() => handleDeleteClick(book.id)} // Artık Modalı açıyor
+                      title="Sil"
+                      className="bg-red-500/20 text-red-400 px-3 py-2 rounded-lg text-lg hover:bg-red-600 hover:text-white transition transform hover:scale-110 shadow-lg"
                     >
                       <FaTrash />
                     </button>
@@ -232,12 +243,9 @@ const AdminDashboard = () => {
             >
               ✕
             </button>
-
-            {/* 👇 BAŞLIK DİNAMİK */}
             <h3 className="text-xl font-bold mb-4 text-green-400">
               {editingBook ? "Kitabı Düzenle ✏️" : "Yeni Kitap Ekle 📚"}
             </h3>
-
             <form onSubmit={handleSaveBook} className="space-y-4">
               <input
                 required
@@ -266,8 +274,6 @@ const AdminDashboard = () => {
                   setNewBook({ ...newBook, description: e.target.value })
                 }
               />
-
-              {/* 👇 BUTON METNİ DİNAMİK */}
               <button
                 type="submit"
                 className="w-full bg-green-600 hover:bg-green-700 py-2 rounded font-bold text-white transition transform hover:scale-[1.02]"
@@ -275,6 +281,69 @@ const AdminDashboard = () => {
                 {editingBook ? "Güncelle" : "Kaydet"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ÇIKIŞ ONAY MODALI */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+              <FaSignOutAlt />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">
+              Çıkış Yapılıyor
+            </h3>
+            <p className="text-gray-400 mb-6">
+              Hesabınızdan çıkış yapmak istediğinize emin misiniz?
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-lg hover:shadow-red-500/30"
+              >
+                Evet, Çık
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 👇 YENİ: SİLME ONAY MODALI */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+              <FaTrash />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Kitabı Sil?</h3>
+            <p className="text-gray-400 mb-6">
+              Bu kitabı kalıcı olarak silmek üzeresiniz. <br />
+              <span className="text-red-400 text-sm">
+                (Bu işlem geri alınamaz!)
+              </span>
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-lg hover:shadow-red-500/30"
+              >
+                Evet, Sil
+              </button>
+            </div>
           </div>
         </div>
       )}
