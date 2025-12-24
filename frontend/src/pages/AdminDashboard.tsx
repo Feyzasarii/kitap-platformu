@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { FaPlus, FaTrash, FaSignOutAlt, FaBook, FaUsers } from "react-icons/fa";
+import {
+  FaPlus,
+  FaTrash,
+  FaSignOutAlt,
+  FaBook,
+  FaUsers,
+  FaSearch,
+} from "react-icons/fa";
 
 interface Book {
   id: number;
@@ -13,6 +20,7 @@ interface Book {
 
 const AdminDashboard = () => {
   const [books, setBooks] = useState<Book[]>([]);
+  const [searchTerm, setSearchTerm] = useState(""); // 👈 YENİ: Arama kelimesi
   const navigate = useNavigate();
 
   // Modal State
@@ -78,6 +86,12 @@ const AdminDashboard = () => {
     // Sayfayı tamamen yenileyerek Login'e git (React hafızası sıfırlanır)
     window.location.href = "/login";
   };
+  // 🔍 FİLTRELEME MANTIĞI
+  const filteredBooks = books.filter(
+    (book) =>
+      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
@@ -106,6 +120,17 @@ const AdminDashboard = () => {
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold">Kitap Listesi</h2>
+          {/* 👇 YENİ: ARAMA KUTUSU */}
+          <div className="relative w-full md:w-96">
+            <FaSearch className="absolute left-3 top-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Kitap adı veya yazar ara..."
+              className="w-full bg-gray-800 border border-gray-600 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 transition"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <button
             onClick={() => setIsModalOpen(true)}
             className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition"
@@ -126,7 +151,8 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {books.map((book) => (
+              {/* 👇 KRİTİK DEĞİŞİKLİK: Artık 'books' değil 'filteredBooks' dönüyor */}
+              {filteredBooks.map((book) => (
                 <tr key={book.id} className="hover:bg-gray-700/50 transition">
                   <td className="p-4 text-gray-400">#{book.id}</td>
                   <td className="p-4 font-bold">{book.title}</td>
@@ -143,8 +169,13 @@ const AdminDashboard = () => {
               ))}
             </tbody>
           </table>
-          {books.length === 0 && (
-            <p className="p-8 text-center text-gray-500">Kayıtlı kitap yok.</p>
+          {/* Arama sonucu boşsa uyarı ver */}
+          {filteredBooks.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              {searchTerm
+                ? "Aradığınız kriterde kitap bulunamadı. 🔍"
+                : "Kayıtlı kitap yok."}
+            </div>
           )}
         </div>
       </main>

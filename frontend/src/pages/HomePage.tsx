@@ -95,7 +95,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
       {/* 🟢 1. SOL PANEL (SIDEBAR) */}
-      <aside className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col p-6 hidden md:flex sticky top-0 h-screen">
+      <aside className="w-64 bg-gray-800 border-r border-gray-700 hidden md:flex md:flex-col p-6 sticky top-0 h-screen">
         <h1 className="text-2xl font-bold text-blue-500 mb-10 flex items-center gap-2">
           📚 KitapYorum
         </h1>

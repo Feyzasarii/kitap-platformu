@@ -34,6 +34,8 @@ export class CreateBookDto {
 
   // En Önemli Kısım: Kategoriler
   // Kullanıcı bize [1, 2, 5] gibi ID listesi gönderecek
+  // 👇 BURAYI DEĞİŞTİRELİM (Şimdilik opsiyonel yapalım)
+  @IsOptional() // <-- Frontend kategori seçeneği eklenene kadar hata vermesin
   @IsArray()
   @IsNumber({}, { each: true }) // Listenin içindeki her şey sayı olmalı
   categoryIds: number[];
