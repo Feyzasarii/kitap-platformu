@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
-import { User } from '../user/entities/user.entity'; // User entity yolunu kontrol et
+import { UpdateBookDto } from './dto/update-book.dto'; // Bunu eklemeyi unutma
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class BookService {
@@ -12,83 +13,58 @@ export class BookService {
     private readonly bookRepository: Repository<Book>,
   ) {}
 
-  // User opsiyonel olabilir (? işareti koyduk) çünkü belki user olmadan test edersin
+  // 🟢 KAYDETME (CREATE)
   async create(createBookDto: CreateBookDto, user?: User) {
-    const book = new Book();
+    // Eski yöntemdeki gibi tek tek eşlemeye gerek yok.
+    // DTO ile Entity alanları artık birebir uyumlu (title, imageUrl, categories vb.)
 
-    // 1. Basit alanları doldur
-    book.title = createBookDto.title;
-    book.author = createBookDto.author;
-    book.description = createBookDto.description;
+    const newBook = this.bookRepository.create({
+      ...createBookDto, // DTO'daki her şeyi (categories dahil) otomatik al
+      addedBy: user, // Kullanıcıyı ekle
+    });
 
-    // Eğer DTO'da bu alanlar opsiyonelse ve gelmediyse undefined kalır, sorun yok
-    book.pageCount = createBookDto.pageCount;
-    book.publisher = createBookDto.publisher;
-    book.coverImage = createBookDto.coverImage;
-
-    // 2. İlişkileri Kur
-
-    // a) Kitabı ekleyen kullanıcıyı ata (Eğer user geldiyse)
-    if (user) {
-      book.addedBy = user;
-    }
-
-    // b) EMNİYET KEMERİ BURADA 🛡️
-    // Frontend henüz kategori göndermiyor olabilir. Eğer categoryIds varsa işlem yap.
-    // Yoksa boş dizi veya null geç.
-    if (createBookDto.categoryIds && createBookDto.categoryIds.length > 0) {
-      book.categories = createBookDto.categoryIds.map((id) => ({ id }) as any);
-    }
-
-    // 3. Kaydet ve Döndür
-    return this.bookRepository.save(book);
+    return this.bookRepository.save(newBook);
   }
 
+  // 🔵 LİSTELEME (FIND ALL)
   async findAll() {
     return this.bookRepository.find({
-      // relations: ['addedBy', 'categories'], // Eğer entity'de bu ilişkiler tanımlı değilse hata verir. Şimdilik kapalı tutabilirsin veya entity hazırsa açabilirsin.
-      order: { id: 'DESC' }, // createdAt yoksa id'ye göre sırala
+      relations: ['categories', 'addedBy'], // 👈 ÖNEMLİ: Kategorileri ve Ekleyeni getir
+      order: { id: 'DESC' }, // En son eklenen en üstte
     });
   }
 
+  // 🔵 TEK GETİR (FIND ONE)
   async findOne(id: number) {
     const book = await this.bookRepository.findOne({
       where: { id },
-      // relations: ['addedBy', 'categories'], // İlişkiler hazırsa aç
+      relations: ['categories', 'addedBy'], // Detayda da kategoriler lazım
     });
 
     if (!book) {
-      // Frontend boş gelince hata sanmasın diye null dönüyoruz, isteğe bağlı throw yapılabilir
       return null;
     }
     return book;
   }
 
-  // GÜNCELLEME (Update)
-  async update(id: number, updateBookDto: any) {
-    // 1. Kategoriler güncellenecek mi? Kontrol ediyoruz
-    let categories = undefined;
-    if (updateBookDto.categoryIds) {
-      categories = updateBookDto.categoryIds.map((catId) => ({ id: catId }));
-    }
-
-    // 2. Preload: Eski veriyle yeniyi harmanla
+  // 🟠 GÜNCELLEME (UPDATE)
+  async update(id: number, updateBookDto: UpdateBookDto) {
+    // Preload: TypeORM'un harika bir özelliği.
+    // Eski veriyi veritabanından bulur, yenisiyle birleştirir.
     const book = await this.bookRepository.preload({
       id: id,
-      ...updateBookDto,
-      categories: categories, // Eğer undefined ise burayı hiç ellemez
+      ...updateBookDto, // Kategoriler dahil her şeyi günceller
     });
 
     if (!book) {
-      throw new NotFoundException(`Book #${id} not found`);
+      throw new NotFoundException(`Kitap #${id} bulunamadı`);
     }
 
     return this.bookRepository.save(book);
   }
 
-  // 🗑️ KİTAP SİLME
+  // 🔴 SİLME (REMOVE)
   async remove(id: number) {
-    // Önce var mı diye bakmak yerine direkt delete atabiliriz, performans için
     const result = await this.bookRepository.delete(id);
 
     if (result.affected === 0) {

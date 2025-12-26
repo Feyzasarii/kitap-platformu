@@ -1,11 +1,11 @@
 import {
-  IsString,
   IsNotEmpty,
+  IsString,
   IsNumber,
   IsOptional,
   IsArray,
-  IsUrl,
 } from 'class-validator';
+import { Category } from '../../category/entities/category.entity';
 
 export class CreateBookDto {
   @IsNotEmpty()
@@ -16,9 +16,9 @@ export class CreateBookDto {
   @IsString()
   author: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  description?: string;
+  description: string;
 
   @IsOptional()
   @IsNumber()
@@ -29,14 +29,16 @@ export class CreateBookDto {
   publisher?: string;
 
   @IsOptional()
-  @IsUrl() // Basit bir URL kontrolü
-  coverImage?: string;
+  @IsNumber()
+  publishYear?: number;
 
-  // En Önemli Kısım: Kategoriler
-  // Kullanıcı bize [1, 2, 5] gibi ID listesi gönderecek
-  // 👇 BURAYI DEĞİŞTİRELİM (Şimdilik opsiyonel yapalım)
-  @IsOptional() // <-- Frontend kategori seçeneği eklenene kadar hata vermesin
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  // 👇 KRİTİK NOKTA: Kategorileri nesne dizisi olarak bekleyeceğiz
+  // Örn: [{id: 1}, {id: 3}]
+  @IsOptional()
   @IsArray()
-  @IsNumber({}, { each: true }) // Listenin içindeki her şey sayı olmalı
-  categoryIds: number[];
+  categories?: Category[];
 }

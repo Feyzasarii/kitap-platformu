@@ -35,7 +35,10 @@ export class Book {
   publisher?: string; // ? koyduk
 
   @Column({ nullable: true })
-  coverImage?: string; // ? koyduk
+  publishYear: number; // Frontend: publishYear (Eskiden yoktu veya farklıydı)
+
+  @Column({ nullable: true })
+  imageUrl?: string; // ? koyduk
 
   // 1. İLİŞKİ: Kitabı ekleyen kullanıcı (Bu hala One-to-Many)
   // Bir kitabın sadece bir "ekleyeni" (sahibi) olur.
@@ -44,7 +47,10 @@ export class Book {
 
   // 2. İLİŞKİ: Kategoriler (Many-to-Many) 👈 DEĞİŞEN KISIM
   // Bir kitap "Dizi" halinde kategorilere sahip olabilir.
-  @ManyToMany(() => Category, (category) => category.books)
+  @ManyToMany(() => Category, (category) => category.books, {
+    // 👇 BURASI KRİTİK NOKTA:
+    onDelete: 'CASCADE', // Kategori silinirse, kitap-kategori bağını da otomatik sil
+  })
   @JoinTable({ name: 'book_category' }) // 👈 Tablo adı artık 'book_category' olacak
   categories: Category[];
 

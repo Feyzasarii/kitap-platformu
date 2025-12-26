@@ -8,340 +8,568 @@ import {
   FaSignOutAlt,
   FaBook,
   FaUsers,
-  FaSearch,
+  FaSearch, // Arama ikonu
   FaEdit,
+  FaTags,
+  FaImage,
 } from "react-icons/fa";
+
+interface Category {
+  id: number;
+  name: string;
+}
 
 interface Book {
   id: number;
   title: string;
   author: string;
   description: string;
+  pageCount?: number;
+  publisher?: string;
+  publishYear?: number;
+  imageUrl?: string;
+  categories?: Category[];
 }
 
 const AdminDashboard = () => {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
-  // Düzenleme için seçilen kitap
+  // --- STATE YÖNETİMİ ---
+  const [activeTab, setActiveTab] = useState<"books" | "categories">("books");
+
+  const [books, setBooks] = useState<Book[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const [searchTerm, setSearchTerm] = useState("");
   const [editingBook, setEditingBook] = useState<Book | null>(null);
 
-  // Modal State'leri
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-
-  // 👇 YENİ: SİLME ONAYI İÇİN STATE'LER
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [bookToDelete, setBookToDelete] = useState<number | null>(null);
-
-  const [newBook, setNewBook] = useState({
+  // Form Verileri
+  const [formData, setFormData] = useState({
     title: "",
     author: "",
     description: "",
+    pageCount: "",
+    publisher: "",
+    publishYear: "",
+    imageUrl: "",
+    categoryIds: [] as number[],
   });
 
-  useEffect(() => {
-    // 1. Rol kontrolü
-    const role = localStorage.getItem("role");
+  const [newCategoryName, setNewCategoryName] = useState("");
 
-    // 🛑 EĞER ADMİN DEĞİLSE, BURADA DURAMAZ!
+  // Modallar
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCategoryDeleteModalOpen, setIsCategoryDeleteModalOpen] =
+    useState(false);
+
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+  // --- API ---
+
+  useEffect(() => {
+    const role = localStorage.getItem("role");
     if (role !== "admin" && role !== "Admin") {
-      toast.error("Bu alana giriş yetkiniz yok! ⛔");
       navigate("/", { replace: true });
       return;
     }
-    fetchBooks();
-  }, []);
+    if (activeTab === "books") fetchBooks();
+    if (activeTab === "categories") fetchCategories();
+  }, [activeTab]);
 
   const fetchBooks = async () => {
     try {
-      const response = await api.get("/book");
-      setBooks(response.data);
+      const res = await api.get("/book");
+      setBooks(res.data);
     } catch (error) {
-      toast.error("Veriler çekilemedi.");
+      toast.error("Kitaplar yüklenemedi");
     }
   };
 
-  // 👇 1. ADIM: SİLME BUTONUNA BASINCA MODALI AÇAR
-  const handleDeleteClick = (id: number) => {
-    setBookToDelete(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  // 👇 2. ADIM: MODALDA "EVET" DENİLİNCE SİLER
-  const confirmDelete = async () => {
-    if (!bookToDelete) return;
-
+  const fetchCategories = async () => {
     try {
-      await api.delete(`/book/${bookToDelete}`);
-      toast.success("Kitap başarıyla silindi. 🗑️");
-      fetchBooks();
+      const res = await api.get("/category");
+      setCategories(res.data);
     } catch (error) {
-      toast.error("Silme işlemi başarısız.");
-    } finally {
-      setIsDeleteModalOpen(false); // Modalı kapat
-      setBookToDelete(null); // Hafızayı temizle
+      toast.error("Kategoriler yüklenemedi");
     }
   };
 
-  // DÜZENLEME MODUNU AÇAR
-  const handleEditClick = (book: Book) => {
-    setEditingBook(book);
-    setNewBook({
-      title: book.title,
-      author: book.author,
-      description: book.description,
+  // --- FORM İŞLEMLERİ ---
+
+  const toggleCategorySelection = (catId: number) => {
+    setFormData((prev) => {
+      const isSelected = prev.categoryIds.includes(catId);
+      if (isSelected) {
+        return {
+          ...prev,
+          categoryIds: prev.categoryIds.filter((id) => id !== catId),
+        };
+      } else {
+        return { ...prev, categoryIds: [...prev.categoryIds, catId] };
+      }
+    });
+  };
+
+  const handleOpenAddModal = () => {
+    fetchCategories();
+    setEditingBook(null);
+    setFormData({
+      title: "",
+      author: "",
+      description: "",
+      pageCount: "",
+      publisher: "",
+      publishYear: "",
+      imageUrl: "",
+      categoryIds: [],
     });
     setIsModalOpen(true);
   };
 
-  // EKLEME MODUNU AÇAR
-  const handleOpenAddModal = () => {
-    setEditingBook(null);
-    setNewBook({ title: "", author: "", description: "" });
+  const handleEditClick = (book: Book) => {
+    fetchCategories();
+    setEditingBook(book);
+    setFormData({
+      title: book.title,
+      author: book.author,
+      description: book.description,
+      pageCount: book.pageCount ? book.pageCount.toString() : "",
+      publisher: book.publisher || "",
+      publishYear: book.publishYear ? book.publishYear.toString() : "",
+      imageUrl: book.imageUrl || "",
+      categoryIds: book.categories ? book.categories.map((c) => c.id) : [],
+    });
     setIsModalOpen(true);
   };
 
-  // KAYDET / GÜNCELLE
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      title: formData.title,
+      author: formData.author,
+      description: formData.description,
+      pageCount: formData.pageCount ? parseInt(formData.pageCount) : null,
+      publishYear: formData.publishYear ? parseInt(formData.publishYear) : null,
+      publisher: formData.publisher,
+      imageUrl: formData.imageUrl,
+      categories: formData.categoryIds.map((id) => ({ id })),
+    };
+
     try {
       if (editingBook) {
-        await api.put(`/book/${editingBook.id}`, newBook);
+        await api.put(`/book/${editingBook.id}`, payload);
         toast.success("Kitap güncellendi! ✍️");
       } else {
-        await api.post("/book", newBook);
+        await api.post("/book", payload);
         toast.success("Yeni kitap eklendi! 🎉");
       }
       setIsModalOpen(false);
-      setEditingBook(null);
-      setNewBook({ title: "", author: "", description: "" });
       fetchBooks();
     } catch (error) {
-      toast.error("İşlem başarısız.");
+      toast.error("Kaydetme başarısız.");
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    window.location.href = "/login";
+  // --- SİLME ---
+  const handleDeleteBookClick = (id: number) => {
+    setItemToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+  const confirmDeleteBook = async () => {
+    if (!itemToDelete) return;
+    try {
+      await api.delete(`/book/${itemToDelete}`);
+      toast.success("Silindi.");
+      fetchBooks();
+    } catch {
+      toast.error("Hata oluştu.");
+    } finally {
+      setIsDeleteModalOpen(false);
+    }
+  };
+
+  const handleDeleteCategoryClick = (id: number) => {
+    setItemToDelete(id);
+    setIsCategoryDeleteModalOpen(true);
+  };
+  const confirmDeleteCategory = async () => {
+    if (!itemToDelete) return;
+    try {
+      await api.delete(`/category/${itemToDelete}`);
+      toast.success("Silindi.");
+      fetchCategories();
+    } catch {
+      toast.error("Silinemedi.");
+    } finally {
+      setIsCategoryDeleteModalOpen(false);
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    try {
+      await api.post("/category", { name: newCategoryName });
+      setNewCategoryName("");
+      fetchCategories();
+      toast.success("Eklendi");
+    } catch {
+      toast.error("Hata");
+    }
   };
 
   const filteredBooks = books.filter(
-    (book) =>
-      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+    (b) =>
+      b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.author.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
-      {/* SOL MENÜ (SIDEBAR) */}
+      {/* SIDEBAR */}
       <aside className="w-64 bg-gray-800 border-r border-gray-700 p-6 flex flex-col">
         <h1 className="text-2xl font-bold text-red-500 mb-8 flex items-center gap-2">
           🛡️ Admin Panel
         </h1>
         <nav className="flex-1 space-y-4">
-          <div className="p-3 bg-gray-700 rounded text-white font-bold flex items-center gap-2">
-            <FaBook /> Kitap Yönetimi
-          </div>
-          <div className="p-3 text-gray-400 hover:text-white cursor-not-allowed flex items-center gap-2">
-            <FaUsers /> Kullanıcılar (Yakında)
-          </div>
+          <button
+            onClick={() => setActiveTab("books")}
+            className={`w-full p-3 rounded text-left font-bold flex items-center gap-2 transition ${
+              activeTab === "books"
+                ? "bg-gray-700"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {" "}
+            <FaBook /> Kitaplar{" "}
+          </button>
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`w-full p-3 rounded text-left font-bold flex items-center gap-2 transition ${
+              activeTab === "categories"
+                ? "bg-gray-700"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {" "}
+            <FaTags /> Kategoriler{" "}
+          </button>
         </nav>
         <button
           onClick={() => setIsLogoutModalOpen(true)}
-          className="flex items-center gap-2 text-red-400 hover:text-white mt-auto transition"
+          className="flex items-center gap-2 text-red-400 mt-auto"
         >
-          <FaSignOutAlt /> Çıkış
+          {" "}
+          <FaSignOutAlt /> Çıkış{" "}
         </button>
       </aside>
 
-      {/* İÇERİK ALANI */}
+      {/* MAIN */}
       <main className="flex-1 p-8">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <h2 className="text-3xl font-bold">Kitap Listesi</h2>
+        {activeTab === "books" ? (
+          <>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+              <h2 className="text-3xl font-bold">Kitap Listesi</h2>
 
-          {/* ARAMA KUTUSU */}
-          <div className="relative w-full md:w-96">
-            <FaSearch className="absolute left-3 top-3.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Kitap adı veya yazar ara..."
-              className="w-full bg-gray-800 border border-gray-600 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 transition"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+              {/* 👇 ARAMA ÇUBUĞU GERİ GELDİ */}
+              <div className="relative w-full md:w-96">
+                <FaSearch className="absolute left-3 top-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Kitap adı veya yazar ara..."
+                  className="w-full bg-gray-800 border border-gray-600 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:border-blue-500 transition"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-          <button
-            onClick={handleOpenAddModal}
-            className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition shadow-lg whitespace-nowrap"
-          >
-            <FaPlus /> Yeni Kitap
-          </button>
-        </div>
-
-        {/* TABLO GÖRÜNÜMÜ */}
-        <div className="bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-700">
-          <table className="w-full text-left">
-            <thead className="bg-gray-700 text-gray-300 uppercase text-sm">
-              <tr>
-                <th className="p-4">ID</th>
-                <th className="p-4">Kitap Adı</th>
-                <th className="p-4">Yazar</th>
-                <th className="p-4 text-center">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {filteredBooks.map((book) => (
-                <tr key={book.id} className="hover:bg-gray-700/50 transition">
-                  <td className="px-4 py-3 text-gray-400">#{book.id}</td>
-                  <td className="px-4 py-3 font-bold text-lg">{book.title}</td>
-                  <td className="px-4 py-3 text-gray-300">{book.author}</td>
-                  <td className="px-4 py-3 text-center flex justify-center gap-4">
-                    {/* DÜZENLE BUTONU */}
-                    <button
-                      onClick={() => handleEditClick(book)}
-                      title="Düzenle"
-                      className="bg-yellow-500/20 text-yellow-400 px-3 py-2 rounded-lg text-lg hover:bg-yellow-500 hover:text-black transition transform hover:scale-110 shadow-lg"
-                    >
-                      <FaEdit />
-                    </button>
-
-                    {/* SİL BUTONU (GÜNCELLENDİ) */}
-                    <button
-                      onClick={() => handleDeleteClick(book.id)} // Artık Modalı açıyor
-                      title="Sil"
-                      className="bg-red-500/20 text-red-400 px-3 py-2 rounded-lg text-lg hover:bg-red-600 hover:text-white transition transform hover:scale-110 shadow-lg"
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredBooks.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              {searchTerm
-                ? "Aradığınız kriterde kitap bulunamadı. 🔍"
-                : "Kayıtlı kitap yok."}
+              <button
+                onClick={handleOpenAddModal}
+                className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold flex items-center gap-2 shadow-lg whitespace-nowrap"
+              >
+                {" "}
+                <FaPlus /> Yeni Kitap{" "}
+              </button>
             </div>
-          )}
-        </div>
+
+            {/* Kitap Tablosu */}
+            <div className="bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-700">
+              <table className="w-full text-left">
+                <thead className="bg-gray-700 text-gray-300">
+                  <tr>
+                    <th className="p-4">ID</th>
+                    <th className="p-4">Kitap</th>
+                    <th className="p-4">Yazar</th>
+                    <th className="p-4">Kategoriler</th>
+                    <th className="p-4 text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {filteredBooks.map((book) => (
+                    <tr key={book.id} className="hover:bg-gray-700/50">
+                      <td className="p-4 text-gray-500">#{book.id}</td>
+                      <td className="p-4 font-bold">{book.title}</td>
+                      <td className="p-4 text-gray-300">{book.author}</td>
+                      <td className="p-4 text-sm text-blue-300">
+                        {book.categories?.map((c) => c.name).join(", ") || "-"}
+                      </td>
+                      <td className="p-4 text-center flex justify-center gap-2">
+                        <button
+                          onClick={() => handleEditClick(book)}
+                          className="text-yellow-400 bg-yellow-500/10 p-2 rounded"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBookClick(book.id)}
+                          className="text-red-400 bg-red-500/10 p-2 rounded"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          /* Kategori Yönetimi Ekranı */
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+              <FaTags className="text-yellow-500" /> Kategori Yönetimi
+            </h2>
+            <form onSubmit={handleAddCategory} className="flex gap-4 mb-8">
+              <input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Yeni Kategori..."
+                className="flex-1 bg-gray-800 border border-gray-600 rounded p-3 text-white"
+              />
+              <button className="bg-yellow-600 px-6 rounded font-bold">
+                Ekle
+              </button>
+            </form>
+            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+              <table className="w-full text-left">
+                <tbody className="divide-y divide-gray-700">
+                  {categories.map((cat) => (
+                    <tr key={cat.id} className="hover:bg-gray-700/50">
+                      <td className="p-4">#{cat.id}</td>
+                      <td className="p-4 font-bold">{cat.name}</td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => handleDeleteCategoryClick(cat.id)}
+                          className="text-red-400 bg-red-500/10 p-2 rounded"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* EKLEME / DÜZENLEME MODALI */}
+      {/* ==================== SÜPER MODAL (KÜÇÜLTÜLMÜŞ & GÜZELEŞTİRİLMİŞ) ==================== */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-md border border-gray-600 relative">
+          {/* 👇 max-w-lg yaparak daralttık (Daha kibar) */}
+          <div className="bg-gray-800 p-5 rounded-xl w-full max-w-lg border border-gray-600 relative max-h-[90vh] overflow-y-auto shadow-2xl">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-lg"
             >
               ✕
             </button>
-            <h3 className="text-xl font-bold mb-4 text-green-400">
-              {editingBook ? "Kitabı Düzenle ✏️" : "Yeni Kitap Ekle 📚"}
+
+            <h3 className="text-xl font-bold mb-4 text-green-400 flex items-center gap-2">
+              {editingBook ? (
+                <>
+                  <FaEdit /> Kitabı Düzenle
+                </>
+              ) : (
+                <>
+                  <FaPlus /> Yeni Kitap Ekle
+                </>
+              )}
             </h3>
-            <form onSubmit={handleSaveBook} className="space-y-4">
-              <input
-                required
-                placeholder="Kitap Adı"
-                className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-white"
-                value={newBook.title}
-                onChange={(e) =>
-                  setNewBook({ ...newBook, title: e.target.value })
-                }
-              />
-              <input
-                required
-                placeholder="Yazar"
-                className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-white"
-                value={newBook.author}
-                onChange={(e) =>
-                  setNewBook({ ...newBook, author: e.target.value })
-                }
-              />
-              <textarea
-                required
-                placeholder="Açıklama"
-                className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-white h-24"
-                value={newBook.description}
-                onChange={(e) =>
-                  setNewBook({ ...newBook, description: e.target.value })
-                }
-              />
+
+            <form onSubmit={handleSaveBook} className="space-y-3">
+              {/* text-sm kullanarak her şeyi biraz küçülttük (%80 Zoom hissi) */}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Kitap Adı
+                  </label>
+                  <input
+                    required
+                    className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Yazar
+                  </label>
+                  <input
+                    required
+                    className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.author}
+                    onChange={(e) =>
+                      setFormData({ ...formData, author: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Sayfa
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.pageCount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pageCount: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Yayınevi
+                  </label>
+                  <input
+                    className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.publisher}
+                    onChange={(e) =>
+                      setFormData({ ...formData, publisher: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">
+                    Yıl
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.publishYear}
+                    onChange={(e) =>
+                      setFormData({ ...formData, publishYear: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">
+                  Kapak Resmi (URL)
+                </label>
+                <div className="relative">
+                  <FaImage className="absolute left-3 top-2.5 text-gray-500 text-sm" />
+                  <input
+                    placeholder="https://..."
+                    className="w-full bg-gray-900 border border-gray-600 p-2 pl-9 rounded text-sm text-white focus:border-green-500 outline-none"
+                    value={formData.imageUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, imageUrl: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Kategori Seçimi */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">
+                  Kategoriler
+                </label>
+                <div className="flex flex-wrap gap-2 bg-gray-900 p-3 rounded border border-gray-600 max-h-24 overflow-y-auto custom-scrollbar">
+                  {categories.map((cat) => {
+                    const isSelected = formData.categoryIds.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => toggleCategorySelection(cat.id)}
+                        className={`px-2 py-1 rounded-md text-xs font-bold transition border ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-500"
+                            : "bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700"
+                        }`}
+                      >
+                        {cat.name} {isSelected && "✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">
+                  Açıklama
+                </label>
+                <textarea
+                  required
+                  className="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm text-white h-20 focus:border-green-500 outline-none resize-none"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                />
+              </div>
+
               <button
                 type="submit"
-                className="w-full bg-green-600 hover:bg-green-700 py-2 rounded font-bold text-white transition transform hover:scale-[1.02]"
+                className="w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg font-bold text-white transition shadow-lg text-sm"
               >
-                {editingBook ? "Güncelle" : "Kaydet"}
+                {editingBook ? "Kaydet" : "Oluştur"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* ÇIKIŞ ONAY MODALI */}
-      {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-              <FaSignOutAlt />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              Çıkış Yapılıyor
-            </h3>
-            <p className="text-gray-400 mb-6">
-              Hesabınızdan çıkış yapmak istediğinize emin misiniz?
-            </p>
-            <div className="flex gap-4 justify-center">
+      {/* SİLME MODALLARI AYNI KALDI (Gizli) */}
+      {(isDeleteModalOpen ||
+        isCategoryDeleteModalOpen ||
+        isLogoutModalOpen) && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 text-center">
+            <h3 className="text-white font-bold text-lg mb-4">Emin misin?</h3>
+            <div className="flex justify-center gap-4">
               <button
-                onClick={() => setIsLogoutModalOpen(false)}
-                className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setIsCategoryDeleteModalOpen(false);
+                  setIsLogoutModalOpen(false);
+                }}
+                className="bg-gray-700 text-white px-4 py-2 rounded text-sm"
               >
-                Vazgeç
+                Hayır
               </button>
               <button
-                onClick={handleLogout}
-                className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-lg hover:shadow-red-500/30"
+                onClick={() => {
+                  if (isLogoutModalOpen) {
+                    localStorage.clear();
+                    window.location.href = "/login";
+                  } else if (isDeleteModalOpen) confirmDeleteBook();
+                  else confirmDeleteCategory();
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm"
               >
-                Evet, Çık
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 👇 YENİ: SİLME ONAY MODALI */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-gray-800 p-6 rounded-xl w-full max-w-sm border border-gray-600 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-              <FaTrash />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Kitabı Sil?</h3>
-            <p className="text-gray-400 mb-6">
-              Bu kitabı kalıcı olarak silmek üzeresiniz. <br />
-              <span className="text-red-400 text-sm">
-                (Bu işlem geri alınamaz!)
-              </span>
-            </p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition"
-              >
-                Vazgeç
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-lg hover:shadow-red-500/30"
-              >
-                Evet, Sil
+                Evet
               </button>
             </div>
           </div>
