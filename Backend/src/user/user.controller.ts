@@ -4,34 +4,43 @@ import {
   UseGuards,
   Req,
   NotFoundException,
+  UseInterceptors,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // 👈 Yeni Guard'ımız
-import { UserService } from './user.service';
-import { Roles } from '../auth/decorators/roles.decorator'; // 👈 Etiketimiz
-import { RolesGuard } from '../auth/guards/roles.guard'; // 👈 Yeni bekçimiz
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UserService } from './user.service'; // 👈 Kırmızı hata buradan kalkacak
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
-@Controller('users')
+@Controller('user') // 👈 404 hatasını çözen kritik satır (tekil 'user')
+@UseInterceptors(ClassSerializerInterceptor)
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
-  // src/user/user.controller.ts içindeki getProfile metodu
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(@Req() req) {
-    const user = await this.userService.findOneById(req.user.userId);
+    // JWT Payload yapısına göre id veya userId gelebilir, ikisini de kontrol ediyoruz
+    const id = req.user.id || req.user.userId;
+
+    if (!id) {
+      throw new NotFoundException('Kullanıcı kimlik bilgisi doğrulanamadı.');
+    }
+
+    const user = await this.userService.findOneById(id);
 
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    // 👇 Burada password değil, passwordHash yazmalısın (Entity'deki isme göre)
-    const { passwordHash, ...result } = user;
+    // Hassas verileri (passwordHash gibi) ayıklayıp sadece gerekli bilgileri dönüyoruz
+    const { passwordHash, ...result } = user as any;
     return result;
   }
+
   @Get('admin-panel')
-  @UseGuards(JwtAuthGuard, RolesGuard) // 👈 Önce giriş yapmalı, sonra Admin olmalı!
-  @Roles('admin') // 👈 Bu kapıyı sadece 'admin' olanlar açabilir
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   async getAdminData() {
     return { mesaj: 'Tebrikler Admin! Gizli verilere ulaştın.' };
   }

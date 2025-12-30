@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage"; // 👈 1. YENİ: Buraya import ettik
+import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import BookDetailPage from "./pages/BookDetailPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProfilePage from "./pages/ProfilePage"; // 👈 1. Profil sayfasını import ettik
 import PrivateRoute from "./PrivateRoute";
 
 function App() {
@@ -11,18 +12,26 @@ function App() {
     <Routes>
       {/* 🔓 HERKESE AÇIK (PUBLIC) ROTALAR */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />{" "}
-      {/* 👈 2. YENİ: Kayıt rotası eklendi */}
-      {/* 🔒 SADECE ADMİNLERİN GİRECEĞİ YERLER */}
-      <Route element={<PrivateRoute restrictTo="admin" />}>
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* 🔒 SADECE ADMİNLER (Admin Paneli) */}
+      <Route element={<PrivateRoute allowedRoles={["admin"]} />}>
         <Route path="/admin" element={<AdminDashboard />} />
       </Route>
-      {/* 👤 SADECE KULLANICILARIN (USER) GİRECEĞİ YERLER */}
-      <Route element={<PrivateRoute restrictTo="user" />}>
+
+      {/* 👤 SADECE KULLANICILAR (Kullanıcı Ana Sayfası) */}
+      <Route element={<PrivateRoute allowedRoles={["user"]} />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/book/:id" element={<BookDetailPage />} />
       </Route>
-      {/* Bilinmeyen bir adrese giderse Login'e at */}
+
+      {/* 🤝 ORTAK ALAN: Hem Admin hem User erişebilir */}
+      <Route element={<PrivateRoute allowedRoles={["user", "admin"]} />}>
+        <Route path="/book/:id" element={<BookDetailPage />} />
+        {/* 👈 2. Profil rotasını ortak alana ekledik, çünkü adminin de bir profili var */}
+        <Route path="/profile" element={<ProfilePage />} />
+      </Route>
+
+      {/* 🚫 404 & YÖNLENDİRME */}
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );

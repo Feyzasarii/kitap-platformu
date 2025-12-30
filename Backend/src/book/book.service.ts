@@ -38,12 +38,11 @@ export class BookService {
   async findOne(id: number) {
     const book = await this.bookRepository.findOne({
       where: { id },
-      relations: ['categories', 'addedBy'], // Detayda da kategoriler lazım
+      // 'user' ifadesini buradan sildik çünkü Book entity'sinde tanımlı değil
+      relations: ['categories', 'comments', 'comments.user'],
     });
 
-    if (!book) {
-      return null;
-    }
+    if (!book) throw new NotFoundException('Kitap bulunamadı!');
     return book;
   }
 

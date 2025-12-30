@@ -1,31 +1,26 @@
-// src/user/user.service.ts
-
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 
-// Not: CreateUserDto ve UpdateUserDto importlarını sildik çünkü
-// şu an doğrudan parametreler (email, username, password) ile çalışacağız.
-// İleride API'yi geliştirirken DTO'ları tekrar dahil ederiz.
-
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    private readonly usersRepository: Repository<User>,
   ) {}
 
-  // 1. Yeni Kullanıcı Kaydetme Metodu (Eski 'create' yerine bunu kullanacağız)
-  // src/user/user.service.ts içindeki registerUser metodu
-
+  // 1. Yeni Kullanıcı Kaydı
   async registerUser(
     email: string,
     username: string,
     passwordPlain: string,
   ): Promise<User> {
-    // 1. Kullanıcı var mı kontrol et
     const existingUser = await this.usersRepository.findOne({
       where: [{ email }, { username }],
     });
@@ -36,29 +31,23 @@ export class UserService {
       );
     }
 
-    // 2. Şifreyi hashle
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(passwordPlain, salt);
 
-    // 3. Kullanıcıyı oluştur
     const newUser = this.usersRepository.create({
       email,
       username,
       passwordHash,
-      roleId: 2, // Varsayılan user rolü
+      roleId: 2, // Varsayılan: User
     });
 
-    // 4. Veritabanına kaydet (Burada savedUser'ı tanımlıyoruz)
     const savedUser = await this.usersRepository.save(newUser);
 
-    // 5. İlişkisiyle beraber geri çek
     const userWithRole = await this.usersRepository.findOne({
       where: { id: savedUser.id },
       relations: ['role'],
     });
 
-    // 6. Eğer bir aksilik olur da kullanıcı bulunamazsa (ki imkansız ama TS ister)
-    // hata fırlatıyoruz, böylece return tipi her zaman 'User' kalıyor.
     if (!userWithRole) {
       throw new BadRequestException(
         'Kullanıcı oluşturuldu fakat rolü yüklenemedi.',
@@ -67,29 +56,28 @@ export class UserService {
 
     return userWithRole;
   }
-  // 2. Kullanıcı Adı veya E-posta ile Kullanıcı Bulma (Login işlemi için)
+
+  // 2. Login İçin Kullanıcı Bulma
   async findOneByUsernameOrEmail(identifier: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: [{ email: identifier }, { username: identifier }],
-      relations: ['role'], // Rol bilgisini de çekiyoruz
+      relations: ['role'],
     });
   }
 
-  // 3. Şifre Doğrulama Metodu
+  // 3. Şifre Doğrulama
   async validatePassword(
     passwordPlain: string,
     passwordHash: string,
   ): Promise<boolean> {
     return bcrypt.compare(passwordPlain, passwordHash);
   }
-  // src/user/user.service.ts içindeki ilgili metot
 
+  // 4. Profil Sayfası İçin ID ile Bulma
   async findOneById(id: number): Promise<User | null> {
-    // 👈 undefined yerine null yaptık
     return this.usersRepository.findOne({
-      // 👈 usersRepository (s takısıyla) yaptık
       where: { id },
-      relations: ['role'],
+      relations: ['role'], // Profilde rol ismini görmek için şart!
     });
   }
 }

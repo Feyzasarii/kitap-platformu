@@ -71,12 +71,12 @@ const LoginPage = () => {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Kullanıcı Adı
+                Kullanıcı Adı veya E-posta
               </label>
               <input
                 type="text"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                placeholder="Örn: nese_sari"
+                placeholder="Örn: kullanici_ad"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
